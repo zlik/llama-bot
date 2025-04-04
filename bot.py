@@ -2,6 +2,7 @@ import os
 import io
 import base64
 import json
+import re
 import discord
 from discord.ext import commands
 from discord import app_commands
@@ -10,6 +11,7 @@ from openai import OpenAI
 from pdf2image import convert_from_bytes
 from PIL import Image
 import aiosqlite
+from datetime import datetime
 
 # Load environment variables
 load_dotenv()
@@ -17,6 +19,9 @@ DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 DISCORD_SERVER_ID = os.getenv("DISCORD_SERVER_ID")
 GUILD_ID = discord.Object(id=int(DISCORD_SERVER_ID))
+
+# Ensure uploads directory exists
+os.makedirs("uploads", exist_ok=True)
 
 # Initialize OpenAI client
 client = OpenAI(api_key=OPENAI_API_KEY)
@@ -84,6 +89,13 @@ async def submit_expense(interaction: discord.Interaction):
         file_bytes = await attachment.read()
         file_name = attachment.filename
 
+        # Save file to uploads directory
+        timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+        safe_filename = f"{interaction.user.id}_{timestamp}_{file_name}"
+        save_path = os.path.join("uploads", safe_filename)
+        with open(save_path, "wb") as f:
+            f.write(file_bytes)
+
         # Convert receipt to image
         image = (
             convert_from_bytes(file_bytes)[0]
@@ -125,8 +137,21 @@ async def submit_expense(interaction: discord.Interaction):
         reimbursement_amount = extracted_user_input.get("amount", "").replace("$", "").strip()
         reimbursement_reason = extracted_user_input.get("reason", "").strip()
 
+        # Check amount limit
+        try:
+            if float(reimbursement_amount) > 6000:
+                await dm.send("🚫 The requested amount exceeds the $6000/month limit. Please revise and resubmit.")
+                return
+        except ValueError:
+            await dm.send("❌ Could not parse the amount. Please try again.")
+            return
+
         # Vision prompt
         vision_prompt = [
+            {
+                "role": "system",
+                "content": "Respond ONLY with valid JSON. Do not include any explanation or text outside the JSON block."
+            },
             {
                 "role": "user",
                 "content": [
@@ -173,7 +198,7 @@ async def submit_expense(interaction: discord.Interaction):
             if result_text.startswith("json"):
                 result_text = result_text[len("json"):].strip()
 
-        # Set defaults to avoid unbound variable error
+        # Set defaults
         extracted_json = {}
         invoice_date = invoice_number = provider = billing_period = ""
         payment_method = tax_amount = total_amount = line_items = extra_data_str = ""
@@ -201,8 +226,8 @@ async def submit_expense(interaction: discord.Interaction):
             extra_data_str = json.dumps({k: v for k, v in extracted_json.items() if k not in known_keys})
 
         except Exception as e:
+            print(f"[Receipt Parse Error] raw result_text: {result_text}")
             extracted_json = {"error": f"Error parsing receipt JSON: {e}"}
-            print(f"[Receipt Parse Error] {e}")
 
         await dm.send(f"✅ AI Response:\n```json\n{json.dumps(extracted_json, indent=2)}\n```")
         await dm.send(f"🔍 Amount Match Check: {match_status}")
@@ -228,7 +253,7 @@ async def submit_expense(interaction: discord.Interaction):
                 reimbursement_reason,
                 json.dumps(extracted_json),
                 match_status,
-                file_name,
+                safe_filename,
                 invoice_date,
                 invoice_number,
                 provider,
@@ -241,7 +266,11 @@ async def submit_expense(interaction: discord.Interaction):
             ))
             await db.commit()
 
+        # Confirmation message
+        await dm.send("🎉 Your expense has been successfully processed and recorded. Thank you!")
+
     except Exception as e:
         await interaction.user.send(f"❌ Something went wrong: {e}")
+        print(f"[Bot Error] {e}")
 
 bot.run(DISCORD_TOKEN)
