@@ -55,11 +55,13 @@ class MyBot(commands.Bot):
                     file_name TEXT,
                     invoice_date TEXT,
                     invoice_number TEXT,
+                    invoice_account_id TEXT,
                     provider TEXT,
                     billing_period TEXT,
                     payment_method TEXT,
                     tax_amount TEXT,
                     total_amount TEXT,
+                    llm_total_amount TEXT,
                     line_items TEXT,
                     extra_data TEXT,
                     created_at TEXT DEFAULT CURRENT_TIMESTAMP
@@ -160,21 +162,24 @@ async def submit_expense(interaction: discord.Interaction):
                         "text": (
                             f"You are an AI reimbursement validator.\n"
                             f"The user submitted:\n- Amount: ${reimbursement_amount}\n- Reason: {reimbursement_reason}\n\n"
-                            "Extract the following fields from the attached receipt as raw JSON:\n"
+                            "From the attached invoice or receipt, extract the following fields:\n\n"
                             "{\n"
-                            '  "provider": "Groq",\n'
+                            '  "provider": "Amazon",\n'
                             '  "invoice_number": "INV-0455",\n'
                             '  "invoice_date": "2024-03-15",\n'
                             '  "billing_period": "Mar 2024",\n'
+                            '  "invoice_account_id": "320567679581",\n'
+                            '  "payer_account_id": "320567679581",\n'
+                            '  "account_id": "320567679581",\n'
                             '  "payment_method": "Visa **** 1234",\n'
                             '  "amount": "$136.42",\n'
                             '  "tax_amount": "$10.00",\n'
                             '  "total_amount": "$146.42",\n'
                             '  "line_items": [\n'
-                            '    {"description": "LLM inference compute", "amount": "$100.00"},\n'
-                            '    {"description": "Storage", "amount": "$26.42"}\n'
+                            '    {"description": "Meta Llama 3.1 70B via Amazon Bedrock", "amount": "$100.00"}\n'
                             '  ]\n'
-                            "}"
+                            "}\n\n"
+                            "Include all line items, and ensure values like account IDs and LLM-related services are captured if visible. Respond with valid JSON only."
                         )
                     },
                     {
@@ -192,28 +197,60 @@ async def submit_expense(interaction: discord.Interaction):
         )
         result_text = vision_resp.choices[0].message.content.strip()
 
-        # Clean code block markers if needed
+        # Ensure it's not empty and valid before attempting JSON parse
         if result_text.startswith("```"):
             result_text = result_text.strip("` \n")
             if result_text.startswith("json"):
                 result_text = result_text[len("json"):].strip()
+
+        # Abort early if no JSON present
+        if not result_text or not result_text.startswith("{"):
+            await dm.send("❌ LLM response did not contain valid JSON. Please try a clearer receipt image or PDF.")
+            print(f"[LLM JSON Error] result_text: {result_text}")
+            return
 
         # Set defaults
         extracted_json = {}
         invoice_date = invoice_number = provider = billing_period = ""
         payment_method = tax_amount = total_amount = line_items = extra_data_str = ""
         match_status = "⚠️ Parsing failed"
+        llm_total_amount = "0.00"
+        invoice_account_id = (
+            extracted_json.get("invoice_account_id") or
+            extracted_json.get("payer_account_id") or
+            extracted_json.get("account_id") or
+            ""
+        )
 
         try:
             extracted_json = json.loads(result_text)
-            extracted_amount = float(extracted_json.get("amount", "").replace("$", "").replace(",", ""))
-            user_amount = float(reimbursement_amount.replace(",", ""))
-            match_status = "✅ Match" if abs(extracted_amount - user_amount) < 0.01 else "❗Mismatch"
+            raw_items = extracted_json.get("line_items", [])
+            total_amount_val = float(extracted_json.get("total_amount", "0").replace("$", "").replace(",", ""))
+            user_amount_val = float(reimbursement_amount.replace(",", ""))
 
-            known_keys = {
-                "invoice_date", "invoice_number", "provider", "billing_period",
-                "payment_method", "amount", "tax_amount", "total_amount", "line_items"
-            }
+            match_status = "✅ Match" if abs(total_amount_val - user_amount_val) < 0.01 else "❗Mismatch"
+
+            llm_terms = [
+                "llm", "language model", "openai", "gpt", "chatgpt", "anthropic",
+                "claude", "bedrock", "cohere", "mistral", "meta llama", "llama", "inference"
+            ]
+
+            llm_items = [
+                item for item in raw_items
+                if any(term in item.get("description", "").lower() for term in llm_terms)
+                or any(term in extracted_json.get("provider", "").lower() for term in llm_terms)
+            ]
+
+            llm_total = 0.0
+            for item in llm_items:
+                try:
+                    llm_total += float(item["amount"].replace("$", "").replace(",", ""))
+                except:
+                    continue
+
+            extracted_json["line_items"] = llm_items
+            extracted_json["llm_total_amount"] = f"${llm_total:.2f}"
+            llm_total_amount = f"${llm_total:.2f}"
 
             invoice_date = extracted_json.get("invoice_date", "")
             invoice_number = extracted_json.get("invoice_number", "")
@@ -222,8 +259,11 @@ async def submit_expense(interaction: discord.Interaction):
             payment_method = extracted_json.get("payment_method", "")
             tax_amount = extracted_json.get("tax_amount", "")
             total_amount = extracted_json.get("total_amount", "")
-            line_items = json.dumps(extracted_json.get("line_items", []))
-            extra_data_str = json.dumps({k: v for k, v in extracted_json.items() if k not in known_keys})
+            line_items = json.dumps(llm_items)
+            extra_data_str = json.dumps({k: v for k, v in extracted_json.items() if k not in {
+                "invoice_date", "invoice_number", "provider", "billing_period",
+                "payment_method", "amount", "tax_amount", "total_amount", "line_items", "llm_total_amount"
+            }})
 
         except Exception as e:
             print(f"[Receipt Parse Error] raw result_text: {result_text}")
@@ -239,10 +279,11 @@ async def submit_expense(interaction: discord.Interaction):
                     user_id, username, user_input_raw, user_input_amount, user_input_reason,
                     requested_amount, user_reason,
                     extracted_json, match_status, file_name,
-                    invoice_date, invoice_number, provider, billing_period,
-                    payment_method, tax_amount, total_amount, line_items, extra_data
+                    invoice_date, invoice_number, invoice_account_id, provider, billing_period,
+                    payment_method, tax_amount, total_amount, llm_total_amount,
+                    line_items, extra_data
                 )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, (
                 str(interaction.user.id),
                 str(interaction.user),
@@ -256,11 +297,13 @@ async def submit_expense(interaction: discord.Interaction):
                 safe_filename,
                 invoice_date,
                 invoice_number,
+                invoice_account_id,
                 provider,
                 billing_period,
                 payment_method,
                 tax_amount,
                 total_amount,
+                llm_total_amount,
                 line_items,
                 extra_data_str
             ))
