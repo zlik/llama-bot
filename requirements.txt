@@ -1,0 +1,6 @@
+Pillow
+aiosqlite
+discord.py
+openai
+pdf2image
+python-dotenv
