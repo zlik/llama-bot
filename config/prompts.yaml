@@ -38,10 +38,23 @@ parse_receipt_with_vision:
             "amount": "$136.42",
             "tax_amount": "$10.00",
             "total_amount": "$146.42",
+            "llm_usage": [
+              {{
+                "model": "Meta Llama 3.1 70B",
+                "tokens_used": 19304000,
+                "service": "Amazon Bedrock",
+                "region": "us-east-1",
+                "description": "Meta Llama 3.1 70B via Amazon Bedrock",
+                "amount": "$100.00"
+              }}
+            ],
             "line_items": [
-              {{"description": "Meta Llama 3.1 70B via Amazon Bedrock", "amount": "$100.00"}}
+              {{
+                "description": "Meta Llama 3.1 70B via Amazon Bedrock",
+                "amount": "$100.00"
+              }}
             ]
-          }}
+          }
       - type: image_url
         image_url:
           url: "{data_url}"
