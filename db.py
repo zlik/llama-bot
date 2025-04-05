@@ -13,8 +13,6 @@ async def init_db():
                 user_id TEXT,
                 username TEXT,
                 user_input_raw TEXT,
-                user_input_amount TEXT,
-                user_input_reason TEXT,
                 requested_amount TEXT,
                 user_reason TEXT,
                 extracted_json TEXT,
@@ -43,8 +41,7 @@ async def insert_expense(data):
         await db.execute(
             """
             INSERT INTO expenses (
-                user_id, username, user_input_raw, user_input_amount, user_input_reason,
-                requested_amount, user_reason, extracted_json, match_status, file_name,
+                user_id, username, user_input_raw, requested_amount, user_reason, extracted_json, match_status, file_name,
                 invoice_date, invoice_number, invoice_account_id, provider, billing_period,
                 payment_method, tax_amount, total_amount, llm_total_amount,
                 line_items, extra_data

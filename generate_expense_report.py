@@ -40,7 +40,7 @@ def generate_csv_report(start_date=None, end_date=None):
     csv_path = os.path.join(REPORTS_DIR, filename)
 
     with open(csv_path, mode="w", newline="", encoding="utf-8") as csvfile:
-        writer = csv.writer(csvfile)
+        writer = csv.writer(csvfile, quoting=csv.QUOTE_ALL)
         writer.writerow(column_names)
 
         for row in rows:
@@ -48,7 +48,8 @@ def generate_csv_report(start_date=None, end_date=None):
             for i, col in enumerate(column_names):
                 if col in {"extracted_json", "line_items", "extra_data"}:
                     try:
-                        row[i] = json.dumps(json.loads(row[i]), indent=2)
+                        # Use compact JSON to avoid line breaks in CSV cells
+                        row[i] = json.dumps(json.loads(row[i]), separators=(",", ":"))
                     except Exception:
                         pass
             writer.writerow(row)

@@ -163,9 +163,19 @@ async def submit_expense(interaction: discord.Interaction):
         except Exception:
             match_status = "⚠️ Parsing failed"
 
+        details = {
+            "User Input": combined_input,
+            "Requested Amount": f"${reimbursement_amount}",
+            "Reason": reimbursement_reason,
+            "Match Status": match_status,
+            "Saved File Path": save_path,
+            "Parsed Data": extracted_json,
+        }
+
         await dm.send(
-            f"✅ AI Response:\n```json\n{json.dumps(extracted_json, indent=2)}\n```"
+            f"✅ Full Submission Summary:\n```json\n{json.dumps(details, indent=2)}\n```"
         )
+
         await dm.send(f"🔍 Amount Match Check: {match_status}")
 
         await insert_expense(
@@ -173,8 +183,6 @@ async def submit_expense(interaction: discord.Interaction):
                 str(interaction.user.id),
                 str(interaction.user),
                 combined_input,
-                f"${reimbursement_amount}",
-                reimbursement_reason,
                 f"${reimbursement_amount}",
                 reimbursement_reason,
                 json.dumps(extracted_json),
