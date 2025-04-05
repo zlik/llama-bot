@@ -2,10 +2,12 @@ import aiosqlite
 
 DB_FILE = "expenses.db"
 
+
 async def init_db():
     async with aiosqlite.connect(DB_FILE) as db:
         await db.execute("DROP TABLE IF EXISTS expenses")
-        await db.execute("""
+        await db.execute(
+            """
             CREATE TABLE expenses (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 user_id TEXT,
@@ -31,12 +33,15 @@ async def init_db():
                 extra_data TEXT,
                 created_at TEXT DEFAULT CURRENT_TIMESTAMP
             )
-        """)
+        """
+        )
         await db.commit()
+
 
 async def insert_expense(data):
     async with aiosqlite.connect(DB_FILE) as db:
-        await db.execute("""
+        await db.execute(
+            """
             INSERT INTO expenses (
                 user_id, username, user_input_raw, user_input_amount, user_input_reason,
                 requested_amount, user_reason, extracted_json, match_status, file_name,
@@ -44,5 +49,7 @@ async def insert_expense(data):
                 payment_method, tax_amount, total_amount, llm_total_amount,
                 line_items, extra_data
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """, data)
+        """,
+            data,
+        )
         await db.commit()
