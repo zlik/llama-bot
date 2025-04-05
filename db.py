@@ -45,7 +45,7 @@ async def insert_expense(data):
                 invoice_date, invoice_number, invoice_account_id, provider, billing_period,
                 payment_method, tax_amount, total_amount, llm_total_amount,
                 line_items, extra_data
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
             data,
         )

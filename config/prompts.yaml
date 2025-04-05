@@ -1,0 +1,47 @@
+extract_text_from_combined_input:
+  - role: user
+    content: |
+      Extract the **amount** and **reason** from this input:
+
+      "{input_text}"
+
+      Return JSON like:
+      {{
+        "amount": "$136.42",
+        "reason": "March compute"
+      }}
+
+parse_receipt_with_vision:
+  - role: system
+    content: >
+      Respond ONLY with valid JSON. Do not include any explanation or text outside the JSON block.
+  - role: user
+    content:
+      - type: text
+        text: |
+          You are an AI reimbursement validator.
+          The user submitted:
+          - Amount: ${amount}
+          - Reason: {reason}
+
+          From the attached invoice or receipt, extract the following fields:
+
+          {{
+            "provider": "Amazon",
+            "invoice_number": "INV-0455",
+            "invoice_date": "2024-03-15",
+            "billing_period": "Mar 2024",
+            "invoice_account_id": "320567679581",
+            "payer_account_id": "320567679581",
+            "account_id": "320567679581",
+            "payment_method": "Visa **** 1234",
+            "amount": "$136.42",
+            "tax_amount": "$10.00",
+            "total_amount": "$146.42",
+            "line_items": [
+              {{"description": "Meta Llama 3.1 70B via Amazon Bedrock", "amount": "$100.00"}}
+            ]
+          }}
+      - type: image_url
+        image_url:
+          url: "{data_url}"
