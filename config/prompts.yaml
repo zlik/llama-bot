@@ -24,7 +24,8 @@ parse_receipt_with_vision:
           - Amount: ${amount}
           - Reason: {reason}
 
-          From the attached invoice or receipt, extract the following fields:
+          From the attached invoice or receipt, extract the fields below.
+          For line_items, get as much information as possible and insert using specified and any additional fields.
 
           {{
             "provider": "Amazon",
@@ -39,7 +40,12 @@ parse_receipt_with_vision:
             "tax_amount": "$10.00",
             "total_amount": "$146.42",
             "line_items": [
-              {{"description": "Meta Llama 3.1 70B via Amazon Bedrock", "amount": "$100.00"}}
+              {{
+                "description": "Meta Llama 3.1 70B via Amazon Bedrock",
+                "token_price": "$0.00035 per 1K input tokens",
+                "tokens_used": "8888",
+                "amount": "$100.00"
+              }}
             ]
           }}
       - type: image_url
