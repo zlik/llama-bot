@@ -118,6 +118,7 @@ def process_chunk(idx: int, chunk: List[dict], log_file=None, force=False):
                         "- total_llm_tokens_used\n"
                         "- total_spent_by_provider (e.g. {'OpenAI': 12.50, 'Grok': 5.00})\n"
                         "If the JSON output is malformed or partially invalid, attempt to fix it and return valid JSON."
+                        "Do not enclose in ```json```"
                     )},
                     {"role": "user", "content": [
                         {"type": "text", "text": text},
