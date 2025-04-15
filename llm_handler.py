@@ -85,19 +85,8 @@ def parse_receipt_with_vision(amount, reason, data_url):
 
 def extract_llm_amount_and_items(extracted_json):
     llm_terms = [
-        "llm",
-        "language model",
-        "openai",
-        "gpt",
-        "chatgpt",
-        "anthropic",
-        "claude",
-        "bedrock",
-        "cohere",
-        "mistral",
         "meta llama",
         "llama",
-        "inference",
     ]
 
     raw_items = extracted_json.get("line_items", [])
@@ -106,6 +95,9 @@ def extract_llm_amount_and_items(extracted_json):
         for item in raw_items
         if any(term in item.get("description", "").lower() for term in llm_terms)
         or any(term in extracted_json.get("provider", "").lower() for term in llm_terms)
+        or any(term in extracted_json.get("model_version_range", "").lower() for term in llm_terms)
+        or any(term in extracted_json.get("model", "").lower() for term in llm_terms)
+        or any(term in extracted_json.get("llm_model", "").lower() for term in llm_terms)
     ]
 
     llm_total = 0.0

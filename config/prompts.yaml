@@ -15,21 +15,22 @@ extract_text_from_combined_input:
 parse_receipt_with_vision:
   - role: system
     content: >
+      You are an AI reimbursement validator.
       Respond ONLY with valid JSON. Do not include any explanation or text outside the JSON block.
       Do not enclose in ```json```
   - role: user
     content:
       - type: text
         text: |
-          You are an AI reimbursement validator.
           The user submitted:
           - Amount: ${amount}
           - Reason: {reason}
 
           From the attached invoice or receipt, extract the following structured fields.
           Include as many as are present. Do not guess values. Use empty strings "" or omit if a field is missing.
-          For line_items, get as much information as possible and insert using specified and any additional fields.
+          For line_items, get as much information as possible and insert using strictly the format from the example.
 
+          Example:
           {{
             "provider": "Amazon",
             "invoice_number": "INV-0455",
@@ -45,8 +46,8 @@ parse_receipt_with_vision:
             "line_items": [
               {{
                 "description": "Meta Llama 3.1 70B via Amazon Bedrock",
-                "token_price": "$0.00035 per 1K input tokens",
-                "tokens_used": "8888",
+                "quantity": "8888",
+                "rate": "0.00000003",
                 "amount": "$100.00"
               }}
             ]

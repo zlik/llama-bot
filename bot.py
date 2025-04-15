@@ -92,6 +92,7 @@ async def submit_expense(interaction: discord.Interaction):
             )
 
         input_msg = await bot.wait_for("message", check=message_check, timeout=90)
+
         combined_input = input_msg.content.strip()
 
         extracted_user_input = extract_text_from_combined_input(combined_input)
@@ -109,6 +110,8 @@ async def submit_expense(interaction: discord.Interaction):
         except ValueError:
             await dm.send("❌ Could not parse the amount. Please try again.")
             return
+
+        await dm.send("✅ OK! ⏳ Processing your invoice, please wait a sec...")
 
         extracted_json = parse_receipt_with_vision(
             reimbursement_amount, reimbursement_reason, data_url
@@ -153,7 +156,7 @@ async def submit_expense(interaction: discord.Interaction):
         )
 
         try:
-            total_amount_val = float(total_amount.replace("$", "").replace(",", ""))
+            total_amount_val = float(llm_total_amount.replace("$", "").replace(",", ""))
             user_amount_val = float(reimbursement_amount.replace(",", ""))
             match_status = (
                 "✅ Match"
@@ -169,14 +172,21 @@ async def submit_expense(interaction: discord.Interaction):
             "Reason": reimbursement_reason,
             "Match Status": match_status,
             "Saved File Path": save_path,
-            "Parsed Data": extracted_json,
         }
 
+        parsed_data = extracted_json
+        parsed_data.pop("line_items", None)
         await dm.send(
-            f"✅ Full Submission Summary:\n```json\n{json.dumps(details, indent=2)}\n```"
+            f"✅ Line Items:\n```json\n{json.dumps(llm_items, indent=2)}\n```"
+        )
+        await dm.send(
+            f"✅ Parsed Data:\n```json\n{json.dumps(parsed_data, indent=2)}\n```"
+        )
+        await dm.send(
+            f"✅ Submission Summary:\n```json\n{json.dumps(details, indent=2)}\n```"
         )
 
-        await dm.send(f"🔍 Amount Match Check: {match_status}")
+        await dm.send(f"🔍 Llama Amount Match Check: {match_status}")
 
         await insert_expense(
             (
