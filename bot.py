@@ -111,7 +111,7 @@ async def submit_expense(interaction: discord.Interaction):
             await dm.send("❌ Could not parse the amount. Please try again.")
             return
 
-        await dm.send("✅ OK! ⏳ Processing your invoice, please wait a sec...")
+        await dm.send("✅ Got it! ⏳ Processing your invoice, please wait a sec...")
 
         extracted_json = parse_receipt_with_vision(
             reimbursement_amount, reimbursement_reason, data_url
