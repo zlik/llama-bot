@@ -213,7 +213,7 @@ async def submit_expense(interaction: discord.Interaction):
         )
 
         await dm.send(
-            "🎉 Your expense has been successfully processed and recorded. Thank you!"
+            "🎉 Your receipt has been successfully processed and recorded. Thank you!"
         )
 
     except Exception as e:
